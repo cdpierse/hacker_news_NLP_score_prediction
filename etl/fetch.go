@@ -1,10 +1,9 @@
-package download
+package main
 
 import (
 	"context"
 	"log"
 	"time"
-
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/iterator"
 )
