@@ -1,15 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 )
 
-func main(){
-	fmt.Println("Hello world")
+func main() {
+	log.Println("Starting Posts Fetching, DB Creation and Post Insertion")
 	posts := GetPosts()
-	log.Println(len(posts))
-	
-
-
+	Run(posts)
 }

@@ -49,10 +49,13 @@ func _setUpClientContext() (*bigquery.Client, context.Context) {
 
 func _query(ctx context.Context, client *bigquery.Client) *bigquery.RowIterator {
 	q := client.Query(
-		`Select COALESCE(title,"None"), COALESCE(url,"None"), score, timestamp, id, type
+		`SELECT title, 
+		CASE when url is NULL then "empty"
+		else url
+		end as url, 
+		score, timestamp, id, type
 		FROM ` + "`bigquery-public-data.hacker_news.full`" + `
-		WHERE title != ""
-					`)
+		WHERE title != ""` )
 
 	it, err := q.Read(ctx)
 	if err != nil {

@@ -17,11 +17,54 @@ const (
 	DBNAME   = "hn_db"
 )
 
-func main() {
-	_connect()
+func Run(posts []Post) {
+	_insertPosts(posts)
+
 }
 
-func _connect() {
+func _insertPosts(posts []Post) {
+	db := _connect()
+	defer db.Close()
+	for i, p := range posts {
+		if i%100000 == 0 {
+			log.Printf("%v rows added so far", i)
+		}
+		if !_RowAlreadyExists(p.ID, db) {
+			_insertPostIntoDB(p, db)
+		} else {
+
+		}
+
+	}
+
+}
+func _insertPostIntoDB(p Post, db *sql.DB) {
+	insertStatment := `INSERT INTO posts (title, url, score, timestamp, id, type)
+	VALUES ($1, $2, $3, $4, $5, $6)`
+	_, err := db.Exec(insertStatment, p.Title, p.URL,
+		p.Score, p.Timestamp, p.ID, p.Type)
+	if err != nil {
+		log.Panic("Error inserting post into DB with error: ", err)
+	}
+
+}
+
+func _RowAlreadyExists(id int, db *sql.DB) bool {
+	var result string
+	insertStatement := `select exists(select 1 from posts where id= $1)`
+	err := db.QueryRow(insertStatement, id).Scan(&result)
+	if err != nil {
+		log.Panic("Error checking if id exists with error: ", err)
+	}
+	if result == "true" {
+		return true
+	}
+
+	return false
+
+}
+
+func _connect() *sql.DB {
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		HOST, PORT, USERNAME, PASSWORD, DBNAME)
@@ -31,8 +74,9 @@ func _connect() {
 		log.Fatal(err)
 	}
 
-	defer db.Close()
 	_createTable(db)
+
+	return db
 
 }
 
@@ -41,7 +85,7 @@ func _createTable(db *sql.DB) {
 	tables := _getTables(db)
 	postsTableExists := false
 	for _, value := range tables {
-		if value == tableName{
+		if value == tableName {
 			postsTableExists = true
 		}
 	}
@@ -90,7 +134,7 @@ func _getTables(db *sql.DB) []string {
 	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&tableName)
-		tables = append(tables,tableName)
+		tables = append(tables, tableName)
 		if err != nil {
 			log.Fatal(err)
 		}
