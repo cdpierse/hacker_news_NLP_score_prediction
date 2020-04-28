@@ -7,5 +7,5 @@ import (
 func main() {
 	log.Println("Starting Posts Fetching, DB Creation and Post Insertion")
 	posts := GetPosts()
-	Run(posts)
+	Insert(posts)
 }

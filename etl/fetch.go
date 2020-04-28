@@ -1,11 +1,11 @@
 package main
 
 import (
+	"cloud.google.com/go/bigquery"
 	"context"
+	"google.golang.org/api/iterator"
 	"log"
 	"time"
-	"cloud.google.com/go/bigquery"
-	"google.golang.org/api/iterator"
 )
 
 // Post is a struct for storing
@@ -55,7 +55,7 @@ func _query(ctx context.Context, client *bigquery.Client) *bigquery.RowIterator 
 		end as url, 
 		score, timestamp, id, type
 		FROM ` + "`bigquery-public-data.hacker_news.full`" + `
-		WHERE title != ""` )
+		WHERE title != ""`)
 
 	it, err := q.Read(ctx)
 	if err != nil {

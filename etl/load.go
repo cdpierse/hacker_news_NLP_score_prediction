@@ -17,7 +17,10 @@ const (
 	DBNAME   = "hn_db"
 )
 
-func Run(posts []Post) {
+// Insert starts the process of 
+// inserting a slice of post structs 
+// into the db. 
+func Insert(posts []Post) {
 	_insertPosts(posts)
 
 }
