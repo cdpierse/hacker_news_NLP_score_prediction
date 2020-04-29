@@ -44,16 +44,4 @@ class Connection:
         self.conn.close()
 
 
-class Process:
-
-    def __init__():
-        pass
-
-    @staticmethod
-    def db_connect():
-        pass
-
-
-if __name__ == "__main__":
-    with Connection() as conn:
-        print(conn.cursor())
+ 
