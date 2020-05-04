@@ -2,7 +2,7 @@ import logging
 
 import pandas as pd
 import psycopg2 as pg
-
+import tldextract
 from db import Connection
 
 
@@ -21,10 +21,17 @@ class Process:
                 logging.info("Retrieved posts from database")
             except Exception as e:
                 logging.error(e)
+
     @staticmethod
     def domain_extractor(url):
-        pass 
+        try:
+            return tldextract.extract(url)
+        except Exception as e:
+            logging.error(
+                f"Could not extract url for {url}, returning empty string instead")
+            return ""
 
 
 if __name__ == "__main__":
-    p = Process()
+    # p = Process()
+    print(Process.domain_extractor("https://www.linkedin.com/"))
