@@ -1,2 +1,2 @@
 # Hacker News Post Score Prediction
- Predicting the score or virality of hacker news posts based on the title and link domain source. 
+ Predicting the virality of hacker news posts using title and link domains. 
