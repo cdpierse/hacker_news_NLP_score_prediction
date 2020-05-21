@@ -23,7 +23,7 @@ class Process:
             except Exception as e:
                 logging.error(e + "Please ensure container is up and running.")
 
-    def prepend_domain(self, r):
+    def prepend_domain(self, r: pd.Series):
         url = r.url
         if url == "empty":
             r.title = "empty :- " + r.title
@@ -41,17 +41,27 @@ class Process:
         self.posts['title'] = self.posts.apply(self.prepend_domain, axis=1)
         logging.info("Applied all title transforms")
 
+    def create_class_buckets(self, r: pd.Series):
+        if r.score <= 5:
+            return '0-5'
+        elif r.score <= 25:
+            return '5-25'
+        elif r.score <= 50:
+            return '25-50'
+        else:
+            return '50+'
+
     @staticmethod
-    def title_to_lower(s):
+    def title_to_lower(s: str):
         return s.lower()
 
     @staticmethod
-    def remove_punctuation(s):
+    def remove_punctuation(s: str):
         "Must come first"
         return s.translate(str.maketrans('', '', punctuation))
 
     @staticmethod
-    def extract_domain(url):
+    def extract_domain(url:str):
         try:
             return tldextract.extract(url)
         except Exception as e:
