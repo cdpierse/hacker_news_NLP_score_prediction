@@ -61,7 +61,7 @@ class Process:
         return s.translate(str.maketrans('', '', punctuation))
 
     @staticmethod
-    def extract_domain(url:str):
+    def extract_domain(url: str):
         try:
             return tldextract.extract(url)
         except Exception as e:
