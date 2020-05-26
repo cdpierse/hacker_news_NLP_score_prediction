@@ -55,13 +55,26 @@ class Process:
         else:
             return '50+'
 
-    def undersample(self,n: int, class_name: str):
-        assert class_name in self.posts.score_bands.unique.values,
+    def undersample(self, n: int, frac: float = None, class_name: str):
+        """Undersamples the posts df according the score_band with
+        `class_name` (usually "0-5")
+        by either `n` or `frac` which are mutually exclusive. If `n` is given
+        the dataframe is sampled by dropping n rows of `class_name`. Otherwise
+        if `frac` is given that fraction of class_name is dropped.
+
+        Args:
+            n (int): Number of rows to drop
+            frac (float): Fraction of rows to drop
+            class_name (str): score_band class of rows to drop
+        """
+        if n and frac:
+            n = None
+        assert class_name in self.posts.score_bands.unique,
         f"class name: {class_name} not found in df"
         drop_rows = self.posts[self.posts.score_bands ==
-                               class_name].sample(n=n)
+                               class_name].sample(n=n, frac=frac)
         drop_idx = drop_rows.index
-        self.posts.drop(drop_idx, axis=1)
+        self.posts.drop(drop_idx, axis=0)
 
     @staticmethod
     def title_to_lower(s: str):
