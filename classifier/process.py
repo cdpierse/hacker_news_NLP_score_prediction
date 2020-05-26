@@ -41,6 +41,10 @@ class Process:
         self.posts['title'] = self.posts.apply(self.prepend_domain, axis=1)
         logging.info("Applied all title transforms")
 
+    def apply_bucket_creation(self):
+        self.posts["score_bands"] = self.posts.apply(
+            self.create_class_buckets, axis=1)
+
     def create_class_buckets(self, r: pd.Series):
         if r.score <= 5:
             return '0-5'
@@ -51,13 +55,20 @@ class Process:
         else:
             return '50+'
 
+    def undersample(self,n: int, class_name: str):
+        assert class_name in self.posts.score_bands.unique.values,
+        f"class name: {class_name} not found in df"
+        drop_rows = self.posts[self.posts.score_bands ==
+                               class_name].sample(n=n)
+        drop_idx = drop_rows.index
+        self.posts.drop(drop_idx, axis=1)
+
     @staticmethod
     def title_to_lower(s: str):
         return s.lower()
 
     @staticmethod
     def remove_punctuation(s: str):
-        "Must come first"
         return s.translate(str.maketrans('', '', punctuation))
 
     @staticmethod
