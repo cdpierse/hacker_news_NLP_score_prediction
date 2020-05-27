@@ -114,6 +114,12 @@ class Process:
         self.UNDERSAMPLE_N = int(top_class_size-new_class_size)
         self.UNDERSAMPLE_CLASS = top_class_name
 
+    def split(self):
+        pass
+
+    def save_splits(self):
+        pass
+
     @staticmethod
     def title_to_lower(s: str):
         return s.lower()
