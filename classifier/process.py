@@ -24,6 +24,16 @@ class Process:
                 logging.error(e + "Please ensure container is up and running.")
 
     def prepend_domain(self, r: pd.Series):
+        """Prepends the domain name of a posts
+        link (if it exists) to the post title. If no domain exists 
+        for a particular post row then a filler empty field is prepended. 
+
+        Args:
+            r (pd.Series): Row from df to apply transforms. 
+
+        Returns:
+            [str]: transformed row title with domain prepended. 
+        """
         url = r.url
         if url == "empty":
             r.title = "empty :- " + r.title
@@ -46,6 +56,20 @@ class Process:
             self.create_class_buckets, axis=1)
 
     def create_class_buckets(self, r: pd.Series):
+        """Creates 4 discrete classes for ranges
+        of post scores. Ranges are 
+            -  "0-5"
+            -  "5-25"
+            -  "25-50"
+            -  "50+"
+
+        Args:
+            r (pd.Series): Row on which to apply transforms
+
+        Returns:
+            [str]: String representing the class to which a score
+            belongs.
+        """
         if r.score <= 5:
             return '0-5'
         elif r.score <= 25:
