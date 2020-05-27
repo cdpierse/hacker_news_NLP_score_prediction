@@ -62,7 +62,6 @@ class Process:
             -  "5-25"
             -  "25-50"
             -  "50+"
-
         Args:
             r (pd.Series): Row on which to apply transforms
 
