@@ -9,8 +9,10 @@ from db import Connection
 
 class Process:
 
-    def __init__(self):
+    def __init__(self, sample: bool = False):
         self.get_posts_from_db()
+        if sample:
+            self.posts = self.posts.sample(n=100_000)
 
     def get_posts_from_db(self):
         with Connection() as conn:
@@ -52,8 +54,10 @@ class Process:
         logging.info("Applied all title transforms")
 
     def apply_bucket_creation(self):
+        logging.info("Applying class bucket transformations")
         self.posts["score_bands"] = self.posts.apply(
             self.create_class_buckets, axis=1)
+        logging.info("Class buckets created")
 
     def create_class_buckets(self, r: pd.Series):
         """Creates 4 discrete classes for ranges
@@ -78,7 +82,7 @@ class Process:
         else:
             return '50+'
 
-    def undersample(self, n: int, frac: float = None, class_name: str):
+    def undersample(self,  n: int,  class_name: str, frac: float = None):
         """Undersamples the posts df according the score_band with
         `class_name` (usually "0-5")
         by either `n` or `frac` which are mutually exclusive. If `n` is given
@@ -92,12 +96,23 @@ class Process:
         """
         if n and frac:
             n = None
-        assert class_name in self.posts.score_bands.unique,
-        f"class name: {class_name} not found in df"
+        assert class_name in self.posts.score_bands.unique(),\
+            f"class name: {class_name} not found in df"
         drop_rows = self.posts[self.posts.score_bands ==
                                class_name].sample(n=n, frac=frac)
         drop_idx = drop_rows.index
-        self.posts.drop(drop_idx, axis=0)
+        self.posts = self.posts.drop(drop_idx, axis=0)
+
+    def set_undersample_n(self):
+        length = len(self.posts)
+        num_unique_bands = self.posts.score_bands.nunique()
+        top_class = self.posts.score_bands.value_counts()
+        print(top_class)
+        top_class_size, top_class_name = top_class.values[0], top_class.index[0]
+        difference = length - top_class_size
+        new_class_size = difference/num_unique_bands
+        self.UNDERSAMPLE_N = int(top_class_size-new_class_size)
+        self.UNDERSAMPLE_CLASS = top_class_name
 
     @staticmethod
     def title_to_lower(s: str):
@@ -118,5 +133,9 @@ class Process:
 
 
 if __name__ == "__main__":
-    p = Process()
+    p = Process(sample=True)
+    p.apply_bucket_creation()
+    p.set_undersample_n()
+    p.undersample(n=p.UNDERSAMPLE_N, class_name=p.UNDERSAMPLE_CLASS)
     p.apply_title_transforms()
+    print(p.posts.score_bands.value_counts())
