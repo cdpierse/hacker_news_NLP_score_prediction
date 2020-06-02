@@ -1,11 +1,12 @@
 import logging
+from string import punctuation
 
 import pandas as pd
 import psycopg2 as pg
 import tldextract
-from string import punctuation
-from db import Connection
+from sklearn.model_selection import train_test_split
 
+from db import Connection
 
 class Process:
 
@@ -125,7 +126,7 @@ class Process:
         top_class_size, top_class_name = top_class.values[0], top_class.index[0]
         difference = length - top_class_size
         new_class_size = difference/num_unique_bands
-        self.UNDERSAMPLE_N = int(top_class_size-new_class_size)
+        self.UNDERSAMPLE_N = int(top_class_size-new_class_size) 
         self.UNDERSAMPLE_CLASS = top_class_name
 
     def split(self):
@@ -173,4 +174,6 @@ if __name__ == "__main__":
     p.set_undersample_n()
     p.undersample(n=p.UNDERSAMPLE_N, class_name=p.UNDERSAMPLE_CLASS)
     p.apply_title_transforms()
+    p.create_label_arrays()
+    p.split()
     print(p.posts.score_bands.value_counts())
