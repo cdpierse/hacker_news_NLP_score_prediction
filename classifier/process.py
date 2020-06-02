@@ -25,6 +25,20 @@ class Process:
             except Exception as e:
                 logging.error(e + "Please ensure container is up and running.")
 
+    def create_label_arrays(self):
+        """
+        create_label_arrays creates a one hot encoded
+        version of our target score buckets. This method
+        results in `self.label_arrays` which is an array of vectors
+        each of with a length of 4. It also creates `self.label_columns_ordering`
+        which maintains the original semantic meaning of each bucket category.
+        """
+        score_bucket_labels = self.posts['score_bands'].to_list()
+        ohe = pd.get_dummies(score_bucket_labels)
+        self.label_columns_ordered = ohe.columns.to_list()
+        self.label_arrays = ohe.values
+        logging.info("One hot encoding of score bucket labels completed")
+
     def prepend_domain(self, r: pd.Series):
         """Prepends the domain name of a posts
         link (if it exists) to the post title. If no domain exists 
@@ -115,7 +129,22 @@ class Process:
         self.UNDERSAMPLE_CLASS = top_class_name
 
     def split(self):
-        pass
+        """
+        split creates train, test, and validation set splits 
+        for the hacker news post data. On the first pass it creates
+        train and test splits. x_train is then split again to 
+        create a validation split. Stratification is applied on the 
+        labels to create representative samples.  
+        """
+        x = self.posts['title']
+        y = self.label_arrays
+        self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(
+            x, y, test_size=0.1, random_state=0, stratify=y)
+        self.x_train, self.x_val, self.y_train, self.y_val = train_test_split(
+            self.x_train, self.y_train, test_size=0.10, random_state=0, stratify=self.y_train)
+        logging.info(
+            f"Succesfully split data. Train size = {len(self.x_train)} "
+            f"Test Size = {len(self.x_test)}, Val Size = {len(self.x_val)}")
 
     def save_splits(self):
         pass
