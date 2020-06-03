@@ -118,7 +118,8 @@ class Process:
                                class_name].sample(n=n, frac=frac)
         drop_idx = drop_rows.index
         self.posts = self.posts.drop(drop_idx, axis=0)
-
+        print(self.posts.score_bands.value_counts())
+        
     def set_undersample_n(self):
         length = len(self.posts)
         num_unique_bands = self.posts.score_bands.nunique()
@@ -218,4 +219,3 @@ if __name__ == "__main__":
     p.create_label_arrays()
     p.split()
     p.save_splits()
-    print(p.posts.score_bands.value_counts())

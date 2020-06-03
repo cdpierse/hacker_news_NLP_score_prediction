@@ -53,6 +53,7 @@ class HackerNewsPostDataset(Dataset):
             )
             with open(cached_features_file, "rb") as cache:
                 self.posts_tokenized = pickle.load(cache)
+
         else:
             logging.info(
                 f"Creating tokenized posts from file '{object_file_path}'")
@@ -102,8 +103,9 @@ class HNPostClassifier(pl.LightningModule):
         return self.model(**inputs)
 
     def training_step(self, batch, batch_num):
-        input_ids, attention_mask, label = batch
-        outputs = self({"input_ids": batch, "labels": batch})
+        input_ids, attention_mask, labels = batch
+        outputs = self(
+            {"input_ids": input_ids, "attention_mask": attention_mask, "labels": batch})
         loss, _ = outputs
         return {"loss": loss, "log": {"Loss": loss}}
 
