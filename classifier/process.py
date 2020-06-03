@@ -196,6 +196,18 @@ class Process:
                 f"Could not extract url for {url}, returning empty string instead")
             return ""
 
+    @staticmethod
+    def load_sample(name: str, path: str = 'classifier/cache/') -> dict:
+        """load_sample loads cached hacker news post object from cache. 
+        Args:
+            name (str): Filename to be loaded.
+            path (str, optional): Location from which to load. Defaults to 'classifier/cache/'.
+        Returns:
+            [dict]: [description]
+        """
+        with open(path + name, 'rb') as f:
+            return pickle.load(f)
+
 
 if __name__ == "__main__":
     p = Process()
