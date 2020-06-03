@@ -5,8 +5,9 @@ import pandas as pd
 import psycopg2 as pg
 import tldextract
 from sklearn.model_selection import train_test_split
-
+import pickle
 from db import Connection
+
 
 class Process:
 
@@ -42,14 +43,14 @@ class Process:
 
     def prepend_domain(self, r: pd.Series):
         """Prepends the domain name of a posts
-        link (if it exists) to the post title. If no domain exists 
-        for a particular post row then a filler empty field is prepended. 
+        link (if it exists) to the post title. If no domain exists
+        for a particular post row then a filler empty field is prepended.
 
         Args:
-            r (pd.Series): Row from df to apply transforms. 
+            r (pd.Series): Row from df to apply transforms.
 
         Returns:
-            [str]: transformed row title with domain prepended. 
+            [str]: transformed row title with domain prepended.
         """
         url = r.url
         if url == "empty":
@@ -76,7 +77,7 @@ class Process:
 
     def create_class_buckets(self, r: pd.Series):
         """Creates 4 discrete classes for ranges
-        of post scores. Ranges are 
+        of post scores. Ranges are
             -  "0-5"
             -  "5-25"
             -  "25-50"
@@ -126,16 +127,16 @@ class Process:
         top_class_size, top_class_name = top_class.values[0], top_class.index[0]
         difference = length - top_class_size
         new_class_size = difference/num_unique_bands
-        self.UNDERSAMPLE_N = int(top_class_size-new_class_size) 
+        self.UNDERSAMPLE_N = int(top_class_size-new_class_size)
         self.UNDERSAMPLE_CLASS = top_class_name
 
     def split(self):
         """
-        split creates train, test, and validation set splits 
+        split creates train, test, and validation set splits
         for the hacker news post data. On the first pass it creates
-        train and test splits. x_train is then split again to 
-        create a validation split. Stratification is applied on the 
-        labels to create representative samples.  
+        train and test splits. x_train is then split again to
+        create a validation split. Stratification is applied on the
+        labels to create representative samples.
         """
         x = self.posts['title']
         y = self.label_arrays
@@ -147,8 +148,36 @@ class Process:
             f"Succesfully split data. Train size = {len(self.x_train)} "
             f"Test Size = {len(self.x_test)}, Val Size = {len(self.x_val)}")
 
-    def save_splits(self):
-        pass
+    def save_splits(self, path: str = "classifier/cache/"):
+        """
+            save_splits_to_disk saves train, test, and validation splits
+            to file along with a copy of the original label column names.
+            Args:
+                path (str, optional): Path at which to save the splits. Defaults to 'classifier/cache/'.
+        """
+
+        def save(name: str, obj: dict):
+            with open(path + name + ".pkl", 'wb') as f:
+                pickle.dump(obj, f)
+            logging.info(f"Saved {name}.pkl to file at {path}")
+
+        try:
+            train = {"train_text": self.x_train, "train_labels": self.y_train,
+                     "label_names": self.label_columns_ordered}
+            test = {"test_text": self.x_test, "test_labels": self.y_test,
+                    "label_names": self.label_columns_ordered}
+            validation = {"val_text": self.x_val, "val_labels": self.y_val,
+                          "label_names": self.label_columns_ordered}
+            save('train', train)
+            save('test', test)
+            save('val', validation)
+
+        except Exception as e:
+            logging.info(
+                """"Unable to save your splits to disk. Please ensure
+                that you have already created the splits using the `self.split()` method
+                    """)
+            raise
 
     @staticmethod
     def title_to_lower(s: str):
@@ -169,11 +198,12 @@ class Process:
 
 
 if __name__ == "__main__":
-    p = Process(sample=True)
+    p = Process()
     p.apply_bucket_creation()
     p.set_undersample_n()
     p.undersample(n=p.UNDERSAMPLE_N, class_name=p.UNDERSAMPLE_CLASS)
     p.apply_title_transforms()
     p.create_label_arrays()
     p.split()
+    p.save_splits()
     print(p.posts.score_bands.value_counts())
