@@ -2,11 +2,9 @@ import logging
 from string import punctuation
 
 import pandas as pd
-import psycopg2 as pg
 import tldextract
 from sklearn.model_selection import train_test_split
 import pickle
-from db import Connection
 
 
 class Process:
@@ -17,6 +15,10 @@ class Process:
             self.posts = self.posts.sample(n=100_000)
 
     def get_posts_from_db(self):
+        try:
+            from db import Connection
+        except ImportError as error:
+            logging.info(error)
         with Connection() as conn:
             try:
                 dtypes = {}
@@ -119,7 +121,7 @@ class Process:
         drop_idx = drop_rows.index
         self.posts = self.posts.drop(drop_idx, axis=0)
         print(self.posts.score_bands.value_counts())
-        
+
     def set_undersample_n(self):
         length = len(self.posts)
         num_unique_bands = self.posts.score_bands.nunique()

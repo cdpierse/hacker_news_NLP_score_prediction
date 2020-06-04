@@ -123,6 +123,13 @@ class HNPostClassifier(pl.LightningModule):
         return DataLoader(HackerNewsPostDataset(tokenizer=self.tokenizer),
                           batch_size=1, num_workers=4)
 
+    def validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+        avg_val_acc = torch.stack([x['val_acc'] for x in outputs]).mean()
+
+        tensorboard_logs = {'val_loss': avg_loss, 'avg_val_acc': avg_val_acc}
+        return {'val_loss': avg_loss, 'progress_bar': tensorboard_logs}
+
     def validation_step(self, batch, batch_nb):
         input_ids, attention_mask, label = batch
         input_ids = input_ids.squeeze(1)
@@ -133,7 +140,7 @@ class HNPostClassifier(pl.LightningModule):
             {"input_ids": input_ids, "attention_mask": attention_mask, "labels": label})
         loss, logits = outputs[:2]
         y_hat = torch.argmax(logits, dim=1)
-        print(y_hat,label)
+        print(y_hat, label)
         val_acc = accuracy_score(y_hat, label)
         val_acc = torch.tensor(val_acc)
         return {'val_loss': loss, 'val_acc': val_acc}
@@ -141,8 +148,6 @@ class HNPostClassifier(pl.LightningModule):
     def val_dataloader(self):
         return DataLoader(HackerNewsPostDataset(tokenizer=self.tokenizer, split="val"),
                           batch_size=1)
-
-    
 
 
 if __name__ == "__main__":
