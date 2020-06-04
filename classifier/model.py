@@ -1,8 +1,8 @@
 import logging
 import os
-
+import torch
 import pytorch_lightning as pl
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 from transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW,
                           AutoModelForSequenceClassification, AutoTokenizer,
@@ -13,6 +13,7 @@ from transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW,
                           get_linear_schedule_with_warmup)
 import pickle
 from process import Process
+from sklearn.metrics import accuracy_score
 
 CACHE_PATH = "classifier/cache/"
 
@@ -103,20 +104,53 @@ class HNPostClassifier(pl.LightningModule):
         return self.model(**inputs)
 
     def training_step(self, batch, batch_num):
-        input_ids, attention_mask, labels = batch
+        input_ids, attention_mask, label = batch
+        input_ids = input_ids.squeeze(1)
+        attention_mask = attention_mask.squeeze(1)
+        label = torch.argmax(label, dim=1)
         outputs = self(
-            {"input_ids": input_ids, "attention_mask": attention_mask, "labels": batch})
-        loss, _ = outputs
+            {"input_ids": input_ids, "attention_mask": attention_mask, "labels": label})
+        loss, _ = outputs[:2]
         return {"loss": loss, "log": {"Loss": loss}}
 
-        pass
+    def configure_optimizers(self):
+        optimizer = AdamW(model.parameters(), lr=1e-5)
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer, num_warmup_steps=1000, num_training_steps=-1)
+        return [optimizer], [scheduler]
 
-    def optimizer_step(self):
-        pass
+    def train_dataloader(self):
+        return DataLoader(HackerNewsPostDataset(tokenizer=self.tokenizer),
+                          batch_size=1, num_workers=4)
 
-    pass
+    def validation_step(self, batch, batch_nb):
+        input_ids, attention_mask, label = batch
+        input_ids = input_ids.squeeze(1)
+        attention_mask = attention_mask.squeeze(1)
+        label = torch.argmax(label, dim=1)
+
+        outputs = self(
+            {"input_ids": input_ids, "attention_mask": attention_mask, "labels": label})
+        loss, logits = outputs[:2]
+        y_hat = torch.argmax(logits, dim=1)
+        print(y_hat,label)
+        val_acc = accuracy_score(y_hat, label)
+        val_acc = torch.tensor(val_acc)
+        return {'val_loss': loss, 'val_acc': val_acc}
+
+    def val_dataloader(self):
+        return DataLoader(HackerNewsPostDataset(tokenizer=self.tokenizer, split="val"),
+                          batch_size=1)
+
+    
 
 
 if __name__ == "__main__":
+    config = DistilBertConfig.from_pretrained(
+        'distilbert-base-uncased', num_labels=4)
+    model = DistilBertForSequenceClassification.from_pretrained(
+        'distilbert-base-uncased', config=config)
     tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
-    posts = HackerNewsPostDataset(tokenizer=tokenizer)
+
+    trainer = pl.Trainer()
+    trainer.fit(HNPostClassifier(model, tokenizer))
