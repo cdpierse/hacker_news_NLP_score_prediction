@@ -1,8 +1,8 @@
 import logging
 import os
-
+import torch
 import pytorch_lightning as pl
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 from transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW,
                           AutoModelForSequenceClassification, AutoTokenizer,
@@ -109,14 +109,32 @@ class HNPostClassifier(pl.LightningModule):
         loss, _ = outputs
         return {"loss": loss, "log": {"Loss": loss}}
 
-        pass
+    def configure_optimizers(self):
+        optimizer = AdamW(model.parameters(), lr=1e-5)
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer, num_warmup_steps=1000, num_training_steps=-1)
+        return [optimizer], [scheduler]
 
-    def optimizer_step(self):
-        pass
+    def train_dataloader(self):
+        return DataLoader(HackerNewsPostDataset(tokenizer=self.tokenizer),
+                          batch_size=1,num_workers=4)
 
-    pass
+    # def val_dataloader(self):
+    #     return DataLoader(HackerNewsPostDataset(tokenizer=self.tokenizer, split="val"),
+    #                       batch_size=1)
+
+    # def test_dataloader(self):
+    #     return DataLoader(HackerNewsPostDataset(tokenizer=self.tokenizer, split="test"),
+    #                       batch_size=1)
 
 
 if __name__ == "__main__":
+    config = DistilBertConfig.from_pretrained(
+        'distilbert-base-uncased', num_labels=4)
+    model = DistilBertForSequenceClassification.from_pretrained(
+        'distilbert-base-uncased', config=config)
     tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
-    posts = HackerNewsPostDataset(tokenizer=tokenizer)
+
+    trainer = pl.Trainer()
+    trainer.fit(HNPostClassifier(model, tokenizer))
+   
