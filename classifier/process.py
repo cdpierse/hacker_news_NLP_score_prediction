@@ -5,6 +5,7 @@ import pandas as pd
 import tldextract
 from sklearn.model_selection import train_test_split
 import pickle
+import boto3
 
 
 class Process:
@@ -151,12 +152,14 @@ class Process:
             f"Succesfully split data. Train size = {len(self.x_train)} "
             f"Test Size = {len(self.x_test)}, Val Size = {len(self.x_val)}")
 
-    def save_splits(self, path: str = "classifier/cache/"):
+    def save_splits(self, path: str = "classifier/cache/", upload: bool = False):
         """
             save_splits_to_disk saves train, test, and validation splits
             to file along with a copy of the original label column names.
             Args:
                 path (str, optional): Path at which to save the splits. Defaults to 'classifier/cache/'.
+                upload (bool, optional): Whether or not to upload splits to s3 bucket rather than store locally. 
+                Defaults to 'false'. If false splits will not be saved locally. 
         """
 
         def save(name: str, obj: dict):
@@ -164,6 +167,13 @@ class Process:
                 pickle.dump(obj, f)
             logging.info(f"Saved {name}.pkl to file at {path}")
 
+        def upload(name: str, obj: dict):
+            """
+            Alternative strategy to `save()` which saves splits locally. `upload()` pushes saved
+            split sets to a public s3 bucket. 
+            """
+
+            Process.s3_upload(name+".pkl", pickle.dumps(obj))
         try:
             train = {"train_text": self.x_train, "train_labels": self.y_train,
                      "label_names": self.label_columns_ordered}
@@ -171,9 +181,14 @@ class Process:
                     "label_names": self.label_columns_ordered}
             validation = {"val_text": self.x_val, "val_labels": self.y_val,
                           "label_names": self.label_columns_ordered}
-            save('train', train)
-            save('test', test)
-            save('val', validation)
+            if upload:
+                upload('train', train)
+                upload('test', test)
+                upload('val', validation)
+            else:
+                save('train', train)
+                save('test', test)
+                save('val', validation)
 
         except Exception as e:
             logging.info(
@@ -181,6 +196,11 @@ class Process:
                 that you have already created the splits using the `self.split()` method
                     """)
             raise
+
+    @staticmethod
+    def s3_upload(name: str, obj: object):
+        s3 = boto3.resource('s3')
+        s3.Bucket("hacker-news-data-cdp").put_object(Key=name, Body=obj)
 
     @staticmethod
     def title_to_lower(s: str):
@@ -220,4 +240,4 @@ if __name__ == "__main__":
     p.apply_title_transforms()
     p.create_label_arrays()
     p.split()
-    p.save_splits()
+    p.save_splits(upload=True)

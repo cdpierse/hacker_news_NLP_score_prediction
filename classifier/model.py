@@ -1,8 +1,12 @@
 import logging
 import os
-import torch
+import pickle
+
+import boto3
 import pytorch_lightning as pl
-from torch.utils.data import Dataset, DataLoader
+import torch
+from sklearn.metrics import accuracy_score
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 from transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW,
                           AutoModelForSequenceClassification, AutoTokenizer,
@@ -11,11 +15,17 @@ from transformers import (CONFIG_NAME, WEIGHTS_NAME, AdamW,
                           DistilBertTokenizer, DistilBertTokenizerFast,
                           PreTrainedModel, PreTrainedTokenizer,
                           get_linear_schedule_with_warmup)
-import pickle
+
 from process import Process
-from sklearn.metrics import accuracy_score
 
 CACHE_PATH = "classifier/cache/"
+
+
+def fetch_datasets_from_s3(split: str = "train"):
+    s3 = boto3.resource('s3')
+    name = split + ".pkl"
+    print(dir(s3))
+    s3.Bucket('hacker-news-data-cdp').download_file(name, 'classifier/cache/'+name)
 
 
 class HackerNewsPostDataset(Dataset):
@@ -26,7 +36,8 @@ class HackerNewsPostDataset(Dataset):
                  tokenizer: PreTrainedTokenizer,
                  split: str = "train",
                  block_size: int = 512,
-                 overwrite_cache: bool = False):
+                 overwrite_cache: bool = False,
+                 download_file: bool = False):
         """[summary]
 
         Args:
@@ -35,6 +46,9 @@ class HackerNewsPostDataset(Dataset):
             block_size (int, optional): [description]. Defaults to 512.
             overwrite_cache (bool, optional): [description]. Defaults to False.
         """
+        if download_file:
+            fetch_datasets_from_s3(split+".pkl")
+
         assert os.path.isfile(CACHE_PATH + split + ".pkl")
         object_file_path = CACHE_PATH + split + ".pkl"
         directory, _ = os.path.split(object_file_path)
@@ -123,9 +137,10 @@ class HNPostClassifier(pl.LightningModule):
         return DataLoader(HackerNewsPostDataset(tokenizer=self.tokenizer),
                           batch_size=1, num_workers=4)
 
-    def validation_epoch_end(self, outputs):
-        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+    def validation_step_end(self, outputs):
+        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         avg_val_acc = torch.stack([x['val_acc'] for x in outputs]).mean()
+        print(avg_loss, avg_val_acc)
 
         tensorboard_logs = {'val_loss': avg_loss, 'avg_val_acc': avg_val_acc}
         return {'val_loss': avg_loss, 'progress_bar': tensorboard_logs}
@@ -140,7 +155,6 @@ class HNPostClassifier(pl.LightningModule):
             {"input_ids": input_ids, "attention_mask": attention_mask, "labels": label})
         loss, logits = outputs[:2]
         y_hat = torch.argmax(logits, dim=1)
-        print(y_hat, label)
         val_acc = accuracy_score(y_hat, label)
         val_acc = torch.tensor(val_acc)
         return {'val_loss': loss, 'val_acc': val_acc}
@@ -151,11 +165,12 @@ class HNPostClassifier(pl.LightningModule):
 
 
 if __name__ == "__main__":
-    config = DistilBertConfig.from_pretrained(
-        'distilbert-base-uncased', num_labels=4)
-    model = DistilBertForSequenceClassification.from_pretrained(
-        'distilbert-base-uncased', config=config)
-    tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+    # config = DistilBertConfig.from_pretrained(
+    #     'distilbert-base-uncased', num_labels=4)
+    # model = DistilBertForSequenceClassification.from_pretrained(
+    #     'distilbert-base-uncased', config=config)
+    # tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 
-    trainer = pl.Trainer()
-    trainer.fit(HNPostClassifier(model, tokenizer))
+    # trainer = pl.Trainer()
+    # trainer.fit(HNPostClassifier(model, tokenizer))
+    fetch_datasets_from_s3(split="val")
